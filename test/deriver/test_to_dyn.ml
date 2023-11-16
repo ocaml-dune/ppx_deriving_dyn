@@ -9,61 +9,61 @@ module X = struct
 end
 
 type from_module = X.t
-[@@deriving to_dyn]
+[@@deriving dyn]
 
 type specialized_param = int list
-[@@deriving to_dyn]
+[@@deriving dyn]
 
 type 'a simple_record =
   { int_field : int
   ; string_field : string
   ; a_option_field : 'a option
   }
-[@@deriving to_dyn]
+[@@deriving dyn]
 
 type ('a, 'b) simple_variant =
   | First
   | Second of 'a
   | Third of int * 'b
   | Fourth of {left : int; right : string}
-[@@deriving to_dyn][@@ocaml.warning "-37"]
+[@@deriving dyn][@@ocaml.warning "-37"]
 
 type long_tuple = int * string * bool * float
-[@@deriving to_dyn]
+[@@deriving dyn]
 
 type polymorphic_variant =
   [ `A
   | `B of int
   | `C of int * string ]
-[@@deriving to_dyn]
+[@@deriving dyn]
 
 module Base_types = struct
   type t = int
-  [@@deriving to_dyn]
+  [@@deriving dyn]
   type t1 = unit
-  [@@deriving to_dyn]
+  [@@deriving dyn]
   type t2 = char
-  [@@deriving to_dyn]
+  [@@deriving dyn]
   type t3 = string
-  [@@deriving to_dyn]
+  [@@deriving dyn]
   type t4 = int32
-  [@@deriving to_dyn]
+  [@@deriving dyn]
   type t5 = int64
-  [@@deriving to_dyn]
+  [@@deriving dyn]
   type t6 = nativeint
-  [@@deriving to_dyn]
+  [@@deriving dyn]
   type t7 = float
-  [@@deriving to_dyn]
+  [@@deriving dyn]
   type t8 = bool
-  [@@deriving to_dyn]
+  [@@deriving dyn]
   type 'a t9 = 'a list
-  [@@deriving to_dyn]
+  [@@deriving dyn]
   type 'a t10 = 'a array
-  [@@deriving to_dyn]
+  [@@deriving dyn]
   type 'a t11 = 'a option
-  [@@deriving to_dyn]
+  [@@deriving dyn]
   type t12 = int * string
-  [@@deriving to_dyn]
+  [@@deriving dyn]
   type t13 = int * string * bool
-  [@@deriving to_dyn]
+  [@@deriving dyn]
 end

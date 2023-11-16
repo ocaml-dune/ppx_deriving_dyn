@@ -5,10 +5,10 @@ module X =
     type u = string
     let u_to_dyn = Dyn.string
   end
-type from_module = X.t[@@deriving to_dyn]
+type from_module = X.t[@@deriving dyn]
 include struct let from_module_to_dyn from_module = X.to_dyn from_module end
 [@@ocaml.doc "@inline"][@@merlin.hide ]
-type specialized_param = int list[@@deriving to_dyn]
+type specialized_param = int list[@@deriving dyn]
 include
   struct
     let specialized_param_to_dyn specialized_param =
@@ -18,7 +18,7 @@ type 'a simple_record =
   {
   int_field: int ;
   string_field: string ;
-  a_option_field: 'a option }[@@deriving to_dyn]
+  a_option_field: 'a option }[@@deriving dyn]
 include
   struct
     let simple_record_to_dyn a_to_dyn
@@ -34,7 +34,7 @@ type ('a, 'b) simple_variant =
   | Third of int * 'b 
   | Fourth of {
   left: int ;
-  right: string } [@@deriving to_dyn][@@ocaml.warning "-37"]
+  right: string } [@@deriving dyn][@@ocaml.warning "-37"]
 include
   struct
     let simple_variant_to_dyn a_to_dyn b_to_dyn =
@@ -47,7 +47,7 @@ include
             [Dyn.record
                [("left", (Dyn.int left)); ("right", (Dyn.string right))]]
   end[@@ocaml.doc "@inline"][@@merlin.hide ]
-type long_tuple = (int * string * bool * float)[@@deriving to_dyn]
+type long_tuple = (int * string * bool * float)[@@deriving dyn]
 include
   struct
     let long_tuple_to_dyn long_tuple =
@@ -56,7 +56,7 @@ include
         long_tuple
   end[@@ocaml.doc "@inline"][@@merlin.hide ]
 type polymorphic_variant = [ `A  | `B of int  | `C of (int * string) ]
-[@@deriving to_dyn]
+[@@deriving dyn]
 include
   struct
     let polymorphic_variant_to_dyn polymorphic_variant =
@@ -68,48 +68,48 @@ include
   end[@@ocaml.doc "@inline"][@@merlin.hide ]
 module Base_types =
   struct
-    type t = int[@@deriving to_dyn]
+    type t = int[@@deriving dyn]
     include struct let to_dyn t = Dyn.int t end[@@ocaml.doc "@inline"]
     [@@merlin.hide ]
-    type t1 = unit[@@deriving to_dyn]
+    type t1 = unit[@@deriving dyn]
     include struct let t1_to_dyn t1 = Dyn.unit t1 end[@@ocaml.doc "@inline"]
     [@@merlin.hide ]
-    type t2 = char[@@deriving to_dyn]
+    type t2 = char[@@deriving dyn]
     include struct let t2_to_dyn t2 = Dyn.char t2 end[@@ocaml.doc "@inline"]
     [@@merlin.hide ]
-    type t3 = string[@@deriving to_dyn]
+    type t3 = string[@@deriving dyn]
     include struct let t3_to_dyn t3 = Dyn.string t3 end[@@ocaml.doc
                                                          "@inline"][@@merlin.hide
                                                                     ]
-    type t4 = int32[@@deriving to_dyn]
+    type t4 = int32[@@deriving dyn]
     include struct let t4_to_dyn t4 = Dyn.int32 t4 end[@@ocaml.doc "@inline"]
     [@@merlin.hide ]
-    type t5 = int64[@@deriving to_dyn]
+    type t5 = int64[@@deriving dyn]
     include struct let t5_to_dyn t5 = Dyn.int64 t5 end[@@ocaml.doc "@inline"]
     [@@merlin.hide ]
-    type t6 = nativeint[@@deriving to_dyn]
+    type t6 = nativeint[@@deriving dyn]
     include struct let t6_to_dyn t6 = Dyn.nativeint t6 end[@@ocaml.doc
                                                             "@inline"]
     [@@merlin.hide ]
-    type t7 = float[@@deriving to_dyn]
+    type t7 = float[@@deriving dyn]
     include struct let t7_to_dyn t7 = Dyn.float t7 end[@@ocaml.doc "@inline"]
     [@@merlin.hide ]
-    type t8 = bool[@@deriving to_dyn]
+    type t8 = bool[@@deriving dyn]
     include struct let t8_to_dyn t8 = Dyn.bool t8 end[@@ocaml.doc "@inline"]
     [@@merlin.hide ]
-    type 'a t9 = 'a list[@@deriving to_dyn]
+    type 'a t9 = 'a list[@@deriving dyn]
     include struct let t9_to_dyn a_to_dyn t9 = Dyn.list a_to_dyn t9 end
     [@@ocaml.doc "@inline"][@@merlin.hide ]
-    type 'a t10 = 'a array[@@deriving to_dyn]
+    type 'a t10 = 'a array[@@deriving dyn]
     include struct let t10_to_dyn a_to_dyn t10 = Dyn.array a_to_dyn t10 end
     [@@ocaml.doc "@inline"][@@merlin.hide ]
-    type 'a t11 = 'a option[@@deriving to_dyn]
+    type 'a t11 = 'a option[@@deriving dyn]
     include struct let t11_to_dyn a_to_dyn t11 = Dyn.option a_to_dyn t11 end
     [@@ocaml.doc "@inline"][@@merlin.hide ]
-    type t12 = (int * string)[@@deriving to_dyn]
+    type t12 = (int * string)[@@deriving dyn]
     include struct let t12_to_dyn t12 = Dyn.pair Dyn.int Dyn.string t12 end
     [@@ocaml.doc "@inline"][@@merlin.hide ]
-    type t13 = (int * string * bool)[@@deriving to_dyn]
+    type t13 = (int * string * bool)[@@deriving dyn]
     include
       struct
         let t13_to_dyn t13 = Dyn.triple Dyn.int Dyn.string Dyn.bool t13

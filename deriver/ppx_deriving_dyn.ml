@@ -392,5 +392,5 @@ module Intf = struct
 end
 
 let deriver =
-  Deriving.add "to_dyn" ~str_type_decl:Impl.generator ~sig_type_decl:Intf.generator
+  Deriving.add "dyn" ~str_type_decl:Impl.generator ~sig_type_decl:Intf.generator
 ;;

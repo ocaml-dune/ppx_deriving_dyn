@@ -1,17 +1,17 @@
 module X :
 sig type t val to_dyn : t Dyn.builder type u val u_to_dyn : u Dyn.builder end
-type from_module[@@deriving to_dyn]
+type from_module[@@deriving dyn]
 include sig val from_module_to_dyn : from_module Dyn.builder end[@@ocaml.doc
                                                                   "@inline"]
 [@@merlin.hide ]
 type specialized_param
 val specialized_param_to_dyn : specialized_param Dyn.builder
-type 'a simple_record[@@deriving to_dyn]
+type 'a simple_record[@@deriving dyn]
 include
   sig
     val simple_record_to_dyn : 'a Dyn.builder -> 'a simple_record Dyn.builder
   end[@@ocaml.doc "@inline"][@@merlin.hide ]
-type ('a, 'b) simple_variant[@@deriving to_dyn]
+type ('a, 'b) simple_variant[@@deriving dyn]
 include
   sig
     val simple_variant_to_dyn :
@@ -23,7 +23,7 @@ type polymorphic_variant
 val polymorphic_variant_to_dyn : polymorphic_variant Dyn.builder
 module Base_types :
 sig
-  type t[@@deriving to_dyn]
+  type t[@@deriving dyn]
   include sig val to_dyn : t Dyn.builder end[@@ocaml.doc "@inline"][@@merlin.hide
                                                                     ]
   type t1

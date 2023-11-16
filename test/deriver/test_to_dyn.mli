@@ -9,16 +9,16 @@ module X : sig
 end
 
 type from_module
-[@@deriving to_dyn]
+[@@deriving dyn]
 
 type specialized_param
 val specialized_param_to_dyn : specialized_param Dyn.builder
 
 type 'a simple_record
-[@@deriving to_dyn]
+[@@deriving dyn]
 
 type ('a, 'b) simple_variant
-[@@deriving to_dyn]
+[@@deriving dyn]
 
 type long_tuple
 val long_tuple_to_dyn : long_tuple Dyn.builder
@@ -28,7 +28,7 @@ val polymorphic_variant_to_dyn : polymorphic_variant Dyn.builder
 
 module Base_types : sig
   type t
-  [@@deriving to_dyn]
+  [@@deriving dyn]
   type t1
   val t1_to_dyn : t1 Dyn.builder
   type t2
