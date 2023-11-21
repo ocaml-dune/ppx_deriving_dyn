@@ -1,0 +1,45 @@
+(rule
+ (alias runtest)
+ (action
+  (diff test_to_dyn.expected.ml test_to_dyn.actual.ml)))
+
+(rule
+ (targets test_to_dyn.actual.ml)
+ (deps test_to_dyn.ml)
+ (action
+  (run
+   ./bin/pp.exe
+   -deriving-keep-w32
+   both
+   -deriving-keep-w60
+   both
+   --impl
+   %{deps}
+   -o
+   %{targets})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff test_to_dyn.expected.mli test_to_dyn.actual.mli)))
+
+(rule
+ (targets test_to_dyn.actual.mli)
+ (deps test_to_dyn.mli)
+ (action
+  (run
+   ./bin/pp.exe
+   -deriving-keep-w32
+   both
+   -deriving-keep-w60
+   both
+   --intf
+   %{deps}
+   -o
+   %{targets})))
+
+(test
+ (name test_to_dyn)
+ (libraries dyn)
+ (preprocess
+  (pps ppx_deriving_dyn)))
