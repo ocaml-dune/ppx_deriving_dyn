@@ -52,7 +52,7 @@ val to_dyn : t Dyn.builder
     + `list`
     + `array`
     + `option`
-- It uses `Dyne.pair` and `Dyn.triple` for tuples of the corresponding size
+- It uses `Dyn.pair` and `Dyn.triple` for tuples of the corresponding size
 - Larger tuple types are converted using an inline
    `(fun (x0, x1, x2, x3) -> Dyn.tuple [...])`
 - It uses `Dyn.record` for record types
