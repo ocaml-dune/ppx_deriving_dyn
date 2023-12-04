@@ -42,4 +42,4 @@
  (name test_to_dyn)
  (libraries dyn)
  (preprocess
-  (pps ppx_deriving_dyn)))
+  (pps ppx_deriving_dyn -check)))

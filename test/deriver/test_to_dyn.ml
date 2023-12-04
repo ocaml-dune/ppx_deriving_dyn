@@ -53,3 +53,28 @@ module Base_types = struct
   type t12 = int * string [@@deriving dyn]
   type t13 = int * string * bool [@@deriving dyn]
 end
+
+module To_dyn_attr = struct
+  type t = (int[@ppx_deriving_dyn.to_dyn Dyn.opaque]) [@@deriving dyn]
+
+  type t1 = int * ((int * string)[@to_dyn fun (_, s) -> Dyn.string s]) * bool
+  [@@deriving dyn]
+
+  type t2 =
+    { a : int
+    ; b : string option
+         [@to_dyn
+           function
+           | Some s -> Dyn.string s
+           | None -> Dyn.string "null"]
+    }
+  [@@deriving dyn]
+
+  type t3 =
+    | A
+    | B of
+        { a : int
+        ; b : bool [@to_dyn fun x -> Dyn.string (string_of_bool x)]
+        }
+  [@@deriving dyn] [@@ocaml.warning "-37"]
+end

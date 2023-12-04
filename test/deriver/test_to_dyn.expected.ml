@@ -115,3 +115,53 @@ module Base_types =
         let t13_to_dyn t13 = Dyn.triple Dyn.int Dyn.string Dyn.bool t13
       end[@@ocaml.doc "@inline"][@@merlin.hide ]
   end
+module To_dyn_attr =
+  struct
+    type t = ((int)[@ppx_deriving_dyn.to_dyn Dyn.opaque])[@@deriving dyn]
+    include struct let to_dyn t = Dyn.opaque t end[@@ocaml.doc "@inline"]
+    [@@merlin.hide ]
+    type t1 =
+      (int * (((int * string))[@to_dyn fun (_, s) -> Dyn.string s]) * bool)
+    [@@deriving dyn]
+    include
+      struct
+        let t1_to_dyn t1 =
+          Dyn.triple Dyn.int (fun (_, s) -> Dyn.string s) Dyn.bool t1
+      end[@@ocaml.doc "@inline"][@@merlin.hide ]
+    type t2 =
+      {
+      a: int ;
+      b: string option
+        [@to_dyn
+          function | Some s -> Dyn.string s | None -> Dyn.string "null"]}
+    [@@deriving dyn]
+    include
+      struct
+        let t2_to_dyn { a; b } =
+          Dyn.record
+            [("a", (Dyn.int a));
+            ("b",
+              (((function
+                 | Some s -> Dyn.string s
+                 | None -> Dyn.string "null")) b))]
+      end[@@ocaml.doc "@inline"][@@merlin.hide ]
+    type t3 =
+      | A 
+      | B of
+      {
+      a: int ;
+      b: bool [@to_dyn fun x -> Dyn.string (string_of_bool x)]} [@@deriving
+                                                                  dyn]
+    [@@ocaml.warning "-37"]
+    include
+      struct
+        let t3_to_dyn =
+          function
+          | A -> Dyn.variant "A" []
+          | B { a; b } ->
+              Dyn.variant "B"
+                [Dyn.record
+                   [("a", (Dyn.int a));
+                   ("b", (((fun x -> Dyn.string (string_of_bool x))) b))]]
+      end[@@ocaml.doc "@inline"][@@merlin.hide ]
+  end

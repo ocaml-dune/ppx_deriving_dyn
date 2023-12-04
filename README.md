@@ -61,3 +61,44 @@ val to_dyn : t Dyn.builder
 - An `'a Dyn.builder` extra argument is expected for each type parameter,
   following the declaration order, e.g. for a `type ('a, 'b) t` it will generate
   `val to_dyn : 'a Dyn.builder -> 'b Dyn.builder -> ('a, 'b) t Dyn.builder` 
+
+## Advanced Usage
+
+### Configuration attributes
+
+`ppx_deriving_dyn` allows you to override the default behaviour using the
+following attributes.
+
+#### `[@to_dyn ...]`
+
+It can be used as `[@to_dyn ...]` or `[@ppx_deriving_dyn.to_dyn ...]` and allows
+you to define how a specific part of a type should be converted to a `Dyn.t`
+value by attaching this attribute to it and passing the function to use in the
+payload.
+
+Here are some examples on how to use it:
+```ocaml
+type t = float [@to_dyn special_float_to_dyn]
+[@@deriving dyn]
+```
+
+```ocaml
+type t = int * string * (bool [@to_dyn fun b -> Dyn.string (string_of_bool b)])
+[@@deriving dyn]
+```
+
+```ocaml
+type t =
+  { a : int
+  ; b : string option
+       [@to_dyn
+         function
+         | Some s -> Dyn.string s
+         | None -> Dyn.string "null"]
+  }
+[@@deriving dyn]
+```
+
+The attribute can be attached to a core type or record field and accepts
+function identifier, partial function applications and anonymous functions as
+payload.
