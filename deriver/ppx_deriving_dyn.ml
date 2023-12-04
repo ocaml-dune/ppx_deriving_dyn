@@ -16,9 +16,7 @@ module Error = struct
   ;;
 
   let unsupported_type ~loc =
-    Location.error_extensionf
-      ~loc
-      "ppx_deriving_dyn: cannot derive to_dyn for this type"
+    Location.error_extensionf ~loc "ppx_deriving_dyn: cannot derive to_dyn for this type"
   ;;
 
   let unsupported_gadt ~loc =
