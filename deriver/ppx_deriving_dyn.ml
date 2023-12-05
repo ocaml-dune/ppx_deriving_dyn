@@ -1,42 +1,5 @@
 open Ppxlib
 
-module Error = struct
-  let unsupported_mutually_rec_type_decl ~loc =
-    Location.error_extensionf
-      ~loc
-      "ppx_deriving_dyn: Mutually recursive type declarations are not supported."
-  ;;
-
-  let unsupported_type_param ~loc =
-    Location.error_extensionf ~loc "ppx_deriving_dyn: unsupported type parameter"
-  ;;
-
-  let unsupported_longident ~loc =
-    Location.error_extensionf ~loc "ppx_deriving_dyn: unsupported longident"
-  ;;
-
-  let unsupported_type ~loc =
-    Location.error_extensionf ~loc "ppx_deriving_dyn: cannot derive to_dyn for this type"
-  ;;
-
-  let unsupported_gadt ~loc =
-    Location.error_extensionf ~loc "ppx_deriving_dyn: cannot derive to_dyn for GADTs"
-  ;;
-
-  let unsupported_rinherit ~loc =
-    Location.error_extensionf
-      ~loc
-      "ppx_deriving_dyn: cannot derive to_dyn for inherited polymorphic variant types."
-  ;;
-
-  let unsupported_conjunctive_tag_arg ~loc =
-    Location.error_extensionf
-      ~loc
-      "ppx_deriving_dyn: cannot derive to_dyn for polymorphic variant tag with \
-       conjunctive type argument."
-  ;;
-end
-
 let to_dyn_name = function
   | "t" -> "to_dyn"
   | s -> s ^ "_to_dyn"
@@ -85,8 +48,10 @@ module Impl = struct
   ;;
 
   let rec core_type_to_dyn ~loc ~core_type expr_opt =
-    match core_type with
-    | { ptyp_desc = Ptyp_constr (lident_loc, type_params); _ } ->
+    let user_provided_to_dyn = Attr.To_dyn.from_core_type core_type in
+    match core_type, user_provided_to_dyn with
+    | _, Some f -> fun_or_applied ~loc ~f expr_opt
+    | { ptyp_desc = Ptyp_constr (lident_loc, type_params); _ }, None ->
       let pexp_ident = to_dyn_ident ~loc lident_loc in
       let param_args = type_params_to_arg_list ~loc type_params in
       let args =
@@ -97,10 +62,10 @@ module Impl = struct
       (match args with
        | [] -> pexp_ident
        | _ -> Ast_builder.Default.pexp_apply ~loc pexp_ident args)
-    | { ptyp_desc = Ptyp_var s; _ } ->
+    | { ptyp_desc = Ptyp_var s; _ }, None ->
       let pexp_ident = Ast_builder.Default.evar ~loc (to_dyn_name s) in
       fun_or_applied ~loc ~f:pexp_ident expr_opt
-    | { ptyp_desc = Ptyp_tuple (([ _; _ ] | [ _; _; _ ]) as core_types); _ } ->
+    | { ptyp_desc = Ptyp_tuple (([ _; _ ] | [ _; _; _ ]) as core_types); _ }, None ->
       let size = List.length core_types in
       let f = if size = 2 then [%expr Dyn.pair] else [%expr Dyn.triple] in
       let to_dyn_args =
@@ -114,18 +79,18 @@ module Impl = struct
         | Some expr -> to_dyn_args @ [ Nolabel, expr ]
       in
       Ast_builder.Default.pexp_apply ~loc f args
-    | { ptyp_desc = Ptyp_tuple core_types; _ } ->
+    | { ptyp_desc = Ptyp_tuple core_types; _ }, None ->
       let destructed = destruct_tuple core_types in
       let pat = tuple_pattern ~loc destructed in
       let body = [%expr Dyn.Tuple [%e tuple_to_dyn_list ~loc destructed]] in
       let to_dyn = [%expr fun [%p pat] -> [%e body]] in
       fun_or_applied ~loc ~f:to_dyn expr_opt
-    | { ptyp_desc = Ptyp_variant (row_fields, _, _); _ } ->
+    | { ptyp_desc = Ptyp_variant (row_fields, _, _); _ }, None ->
       let to_dyn =
         Ast_builder.Default.pexp_function ~loc (List.map (row_field_case ~loc) row_fields)
       in
       fun_or_applied ~loc ~f:to_dyn expr_opt
-    | { ptyp_loc = loc; _ } ->
+    | { ptyp_loc = loc; _ }, None ->
       Ast_builder.Default.pexp_extension ~loc (Error.unsupported_type ~loc)
 
   and type_params_to_arg_list ~loc type_params =
@@ -193,7 +158,7 @@ module Impl = struct
   ;;
 
   let destruct_record labels =
-    List.map (fun { pld_name = { txt; _ }; pld_type; _ } -> txt, pld_type) labels
+    List.map (fun ({ pld_name = { txt; _ }; _ } as pld) -> txt, pld) labels
   ;;
 
   let record_pattern ~loc destructed_record =
@@ -206,10 +171,15 @@ module Impl = struct
     Ast_builder.Default.ppat_record ~loc fields Closed
   ;;
 
-  let record_field_to_dyn ~loc (txt, pld_type) =
+  let record_field_to_dyn ~loc (txt, pld) =
     let string_lit = Ast_builder.Default.estring ~loc txt in
     let field_var = Ast_builder.Default.evar ~loc txt in
-    let expr = core_type_to_dyn ~loc ~core_type:pld_type (Some field_var) in
+    let user_provided_to_dyn = Attr.To_dyn.from_label_declaration pld in
+    let expr =
+      match user_provided_to_dyn with
+      | None -> core_type_to_dyn ~loc ~core_type:pld.pld_type (Some field_var)
+      | Some expr -> Ast_builder.Default.pexp_apply ~loc expr [ Nolabel, field_var ]
+    in
     Ast_builder.Default.pexp_tuple ~loc [ string_lit; expr ]
   ;;
 
