@@ -179,3 +179,11 @@ will derive:
 ```ocaml
 let to_dyn (x0, _) = Dyn.int x0
 ```
+
+This attribute can be used only in very specific places so it's easy to misuse
+it if you forget to add the right brackets. If you're having trouble with it, we
+recommend you add `-check` to your dune file's `(pps ...)` field. This will
+enable some ppxlib driver's check including one reporting unused attributes.
+It should help you debug issues with `[@ignore]` as a misplaced one is likely
+not to be consumed by `ppx_deriving_dyn` and therefore reported as such by the
+driver when building your project.
