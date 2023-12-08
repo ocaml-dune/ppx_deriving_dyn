@@ -50,8 +50,6 @@ module Base_types = struct
   type 'a t9 = 'a list [@@deriving dyn]
   type 'a t10 = 'a array [@@deriving dyn]
   type 'a t11 = 'a option [@@deriving dyn]
-  type t12 = int * string [@@deriving dyn]
-  type t13 = int * string * bool [@@deriving dyn]
 end
 
 module To_dyn_attr = struct
@@ -75,6 +73,29 @@ module To_dyn_attr = struct
     | B of
         { a : int
         ; b : bool [@to_dyn fun x -> Dyn.string (string_of_bool x)]
+        }
+  [@@deriving dyn] [@@ocaml.warning "-37"]
+end
+
+module Ignore_attr = struct
+  type t = int * (string[@ignore]) * float [@@deriving dyn]
+  type t1 = string * (int[@ignore]) [@@deriving dyn]
+
+  type t2 =
+    { field_a : int
+    ; field_b : string [@to_dyn.ignore]
+    ; field_c : bool
+    }
+  [@@deriving dyn]
+
+  type t3 =
+    | A of (int[@ppx_deriving_dyn.to_dyn.ignore])
+    | B of int * (string[@ignore])
+    | All_ignored of (int[@ignore]) * (string[@ignore])
+    | Record_arg of
+        { field_a : int
+        ; field_b : string [@ignore]
+        ; field_c : bool
         }
   [@@deriving dyn] [@@ocaml.warning "-37"]
 end

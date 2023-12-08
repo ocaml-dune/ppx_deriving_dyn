@@ -106,14 +106,6 @@ module Base_types =
     type 'a t11 = 'a option[@@deriving dyn]
     include struct let t11_to_dyn a_to_dyn t11 = Dyn.option a_to_dyn t11 end
     [@@ocaml.doc "@inline"][@@merlin.hide ]
-    type t12 = (int * string)[@@deriving dyn]
-    include struct let t12_to_dyn t12 = Dyn.pair Dyn.int Dyn.string t12 end
-    [@@ocaml.doc "@inline"][@@merlin.hide ]
-    type t13 = (int * string * bool)[@@deriving dyn]
-    include
-      struct
-        let t13_to_dyn t13 = Dyn.triple Dyn.int Dyn.string Dyn.bool t13
-      end[@@ocaml.doc "@inline"][@@merlin.hide ]
   end
 module To_dyn_attr =
   struct
@@ -126,7 +118,10 @@ module To_dyn_attr =
     include
       struct
         let t1_to_dyn t1 =
-          Dyn.triple Dyn.int (fun (_, s) -> Dyn.string s) Dyn.bool t1
+          (fun (x0, x1, x2) ->
+             Dyn.Tuple
+               [Dyn.int x0; ((fun (_, s) -> Dyn.string s)) x1; Dyn.bool x2])
+            t1
       end[@@ocaml.doc "@inline"][@@merlin.hide ]
     type t2 =
       {
@@ -163,5 +158,50 @@ module To_dyn_attr =
                 [Dyn.record
                    [("a", (Dyn.int a));
                    ("b", (((fun x -> Dyn.string (string_of_bool x))) b))]]
+      end[@@ocaml.doc "@inline"][@@merlin.hide ]
+  end
+module Ignore_attr =
+  struct
+    type t = (int * ((string)[@ignore ]) * float)[@@deriving dyn]
+    include
+      struct
+        let to_dyn t =
+          (fun (x0, _, x2) -> Dyn.Tuple [Dyn.int x0; Dyn.float x2]) t
+      end[@@ocaml.doc "@inline"][@@merlin.hide ]
+    type t1 = (string * ((int)[@ignore ]))[@@deriving dyn]
+    include struct let t1_to_dyn t1 = (fun (x0, _) -> Dyn.string x0) t1 end
+    [@@ocaml.doc "@inline"][@@merlin.hide ]
+    type t2 =
+      {
+      field_a: int ;
+      field_b: string [@to_dyn.ignore ];
+      field_c: bool }[@@deriving dyn]
+    include
+      struct
+        let t2_to_dyn { field_a; field_b = _; field_c } =
+          Dyn.record
+            [("field_a", (Dyn.int field_a)); ("field_c", (Dyn.bool field_c))]
+      end[@@ocaml.doc "@inline"][@@merlin.hide ]
+    type t3 =
+      | A of ((int)[@ppx_deriving_dyn.to_dyn.ignore ]) 
+      | B of int * ((string)[@ignore ]) 
+      | All_ignored of ((int)[@ignore ]) * ((string)[@ignore ]) 
+      | Record_arg of
+      {
+      field_a: int ;
+      field_b: string [@ignore ];
+      field_c: bool } [@@deriving dyn][@@ocaml.warning "-37"]
+    include
+      struct
+        let t3_to_dyn =
+          function
+          | A _ -> Dyn.variant "A" []
+          | B (x0, _) -> Dyn.variant "B" [Dyn.int x0]
+          | All_ignored (_, _) -> Dyn.variant "All_ignored" []
+          | Record_arg { field_a; field_b = _; field_c } ->
+              Dyn.variant "Record_arg"
+                [Dyn.record
+                   [("field_a", (Dyn.int field_a));
+                   ("field_c", (Dyn.bool field_c))]]
       end[@@ocaml.doc "@inline"][@@merlin.hide ]
   end

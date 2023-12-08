@@ -22,3 +22,7 @@ let unsupported_conjunctive_tag_arg ~loc =
     ~loc
     "cannot derive to_dyn for polymorphic variant tag with conjunctive type argument."
 ;;
+
+let cannot_ignore_all_elements ~loc =
+  error_extensionf ~loc "you cannot mark all elements of a tuple or record with [@ignore]"
+;;

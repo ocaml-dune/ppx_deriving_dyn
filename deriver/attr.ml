@@ -42,3 +42,36 @@ module To_dyn = struct
     get_attr label_decl_attr label_declaration
   ;;
 end
+
+module Ignore = struct
+  let name = "ppx_deriving_dyn.to_dyn.ignore"
+
+  let payload_pattern =
+    let open Ast_pattern in
+    pstr nil
+  ;;
+
+  let has_ignore attr ast =
+    (* TODO: Switch to Attribute.has_flag once it's released *)
+    match Attribute.get_res attr ast with
+    | Ok (Some ()) -> Ok true
+    | Ok None -> Ok false
+    | Error (err, _) ->
+      let loc = Location.Error.get_location err in
+      Error (Location.Error.to_extension err, loc)
+  ;;
+
+  let core_type_attr =
+    (* TODO: Switch to Attribute.declare_flag once it's released *)
+    Attribute.declare name Attribute.Context.core_type payload_pattern ()
+  ;;
+
+  let core_type ct = has_ignore core_type_attr ct
+
+  let label_decl_attr =
+    (* TODO: Switch to Attribute.declare_flag once it's released *)
+    Attribute.declare name Attribute.Context.label_declaration payload_pattern ()
+  ;;
+
+  let label_declaration ld = has_ignore label_decl_attr ld
+end

@@ -35,9 +35,13 @@ module Impl = struct
   ;;
 
   let tuple_pattern ~loc destructed =
-    let vars =
-      List.map (fun (name, _) -> Ast_builder.Default.pvar ~loc name) destructed
+    let elm_pattern (name, ct) =
+      match Attr.Ignore.core_type ct with
+      | Ok true -> Ast_builder.Default.ppat_any ~loc
+      | Ok false -> Ast_builder.Default.pvar ~loc name
+      | Error (extension, loc) -> Ast_builder.Default.ppat_extension ~loc extension
     in
+    let vars = List.map elm_pattern destructed in
     Ast_builder.Default.ppat_tuple ~loc vars
   ;;
 
@@ -65,25 +69,8 @@ module Impl = struct
     | { ptyp_desc = Ptyp_var s; _ }, None ->
       let pexp_ident = Ast_builder.Default.evar ~loc (to_dyn_name s) in
       fun_or_applied ~loc ~f:pexp_ident expr_opt
-    | { ptyp_desc = Ptyp_tuple (([ _; _ ] | [ _; _; _ ]) as core_types); _ }, None ->
-      let size = List.length core_types in
-      let f = if size = 2 then [%expr Dyn.pair] else [%expr Dyn.triple] in
-      let to_dyn_args =
-        List.map
-          (fun core_type -> Nolabel, core_type_to_dyn ~loc ~core_type None)
-          core_types
-      in
-      let args =
-        match expr_opt with
-        | None -> to_dyn_args
-        | Some expr -> to_dyn_args @ [ Nolabel, expr ]
-      in
-      Ast_builder.Default.pexp_apply ~loc f args
     | { ptyp_desc = Ptyp_tuple core_types; _ }, None ->
-      let destructed = destruct_tuple core_types in
-      let pat = tuple_pattern ~loc destructed in
-      let body = [%expr Dyn.Tuple [%e tuple_to_dyn_list ~loc destructed]] in
-      let to_dyn = [%expr fun [%p pat] -> [%e body]] in
+      let to_dyn = tuple_to_dyn ~loc core_types in
       fun_or_applied ~loc ~f:to_dyn expr_opt
     | { ptyp_desc = Ptyp_variant (row_fields, _, _); _ }, None ->
       let to_dyn =
@@ -97,14 +84,30 @@ module Impl = struct
     List.map (fun core_type -> Nolabel, core_type_to_dyn ~loc ~core_type None) type_params
 
   and tuple_to_dyn_list ~loc destructed_tuple =
-    let to_dyn_list =
-      List.map
-        (fun (arg_name, core_type) ->
-          let arg = Ast_builder.Default.evar ~loc arg_name in
-          core_type_to_dyn ~loc ~core_type (Some arg))
-        destructed_tuple
+    let elm_expr (arg_name, core_type) =
+      match Attr.Ignore.core_type core_type with
+      | Ok true -> None
+      | Ok false ->
+        let arg = Ast_builder.Default.evar ~loc arg_name in
+        Some (core_type_to_dyn ~loc ~core_type (Some arg))
+      | Error (extension, loc) -> Some (Ast_builder.Default.pexp_extension ~loc extension)
     in
-    Ast_builder.Default.elist ~loc to_dyn_list
+    List.filter_map elm_expr destructed_tuple
+
+  and tuple_to_dyn ~loc core_types =
+    let destructed = destruct_tuple core_types in
+    let pat = tuple_pattern ~loc destructed in
+    let to_dyn_list = tuple_to_dyn_list ~loc destructed in
+    let body =
+      match to_dyn_list with
+      | [] ->
+        (* tuple_to_dyn_list returned an empty list meaning all elements were
+           marked with [[@ignore]] *)
+        Ast_builder.Default.pexp_extension ~loc (Error.cannot_ignore_all_elements ~loc)
+      | [ one ] -> one
+      | l -> [%expr Dyn.Tuple [%e Ast_builder.Default.elist ~loc l]]
+    in
+    [%expr fun [%p pat] -> [%e body]]
 
   and row_field_case ~loc { prf_desc; prf_loc; _ } =
     let pc_lhs, pc_rhs =
@@ -120,11 +123,7 @@ module Impl = struct
         let pc_rhs = variant_x_args ~loc ~variant_name:txt destructed in
         pc_lhs, pc_rhs
       | Rtag ({ txt; _ }, _, [ core_type ]) ->
-        let arg_name = String.uncapitalize_ascii txt in
-        let pat = Ast_builder.Default.pvar ~loc arg_name in
-        let pc_lhs = Ast_builder.Default.ppat_variant ~loc txt (Some pat) in
-        let pc_rhs = variant_one_arg ~loc ~arg_name ~variant_name:txt core_type in
-        pc_lhs, pc_rhs
+        variant_one_arg_case ~loc ~kind:`Polymorphic ~variant_name:txt core_type
       | Rtag (_, _, _) ->
         let pc_lhs =
           Ast_builder.Default.ppat_extension
@@ -154,7 +153,37 @@ module Impl = struct
 
   and variant_x_args ~loc ~variant_name destructed_tuple =
     let string_lit = Ast_builder.Default.estring ~loc variant_name in
-    [%expr Dyn.variant [%e string_lit] [%e tuple_to_dyn_list ~loc destructed_tuple]]
+    let args = tuple_to_dyn_list ~loc destructed_tuple in
+    [%expr Dyn.variant [%e string_lit] [%e Ast_builder.Default.elist ~loc args]]
+
+  (** Special case function for constructors with a single argument to avoid
+      emitting 1-uple patterns. *)
+  and variant_one_arg_case ~loc ~kind ~variant_name core_type =
+    let make_pat arg_pat =
+      match kind with
+      | `Polymorphic -> Ast_builder.Default.ppat_variant ~loc variant_name (Some arg_pat)
+      | `Regular ->
+        let lident = { txt = Lident variant_name; loc } in
+        Ast_builder.Default.ppat_construct ~loc lident (Some arg_pat)
+    in
+    match Attr.Ignore.core_type core_type with
+    | Ok true ->
+      let arg_pat = Ast_builder.Default.ppat_any ~loc in
+      let pc_lhs = make_pat arg_pat in
+      let pc_rhs = variant_no_arg ~loc ~variant_name in
+      pc_lhs, pc_rhs
+    | Ok false ->
+      let arg_name = String.uncapitalize_ascii variant_name in
+      let arg_pat = Ast_builder.Default.pvar ~loc arg_name in
+      let pc_lhs = make_pat arg_pat in
+      let pc_rhs = variant_one_arg ~loc ~arg_name ~variant_name core_type in
+      pc_lhs, pc_rhs
+    | Error (extension, loc) ->
+      let arg_pat = Ast_builder.Default.ppat_any ~loc in
+      let pc_lhs = make_pat arg_pat in
+      (* Embeds the error in the case right hand side *)
+      let pc_rhs = Ast_builder.Default.pexp_extension ~loc extension in
+      pc_lhs, pc_rhs
   ;;
 
   let destruct_record labels =
@@ -162,29 +191,38 @@ module Impl = struct
   ;;
 
   let record_pattern ~loc destructed_record =
-    let fields =
-      List.map
-        (fun (field_name, _) ->
-          { txt = Lident field_name; loc }, Ast_builder.Default.pvar ~loc field_name)
-        destructed_record
+    let field_pat (field_name, pld) =
+      let lhs = { txt = Lident field_name; loc } in
+      let rhs =
+        match Attr.Ignore.label_declaration pld with
+        | Ok true -> Ast_builder.Default.ppat_any ~loc
+        | Ok false -> Ast_builder.Default.pvar ~loc field_name
+        | Error (extension, loc) -> Ast_builder.Default.ppat_extension ~loc extension
+      in
+      lhs, rhs
     in
+    let fields = List.map field_pat destructed_record in
     Ast_builder.Default.ppat_record ~loc fields Closed
   ;;
 
   let record_field_to_dyn ~loc (txt, pld) =
-    let string_lit = Ast_builder.Default.estring ~loc txt in
-    let field_var = Ast_builder.Default.evar ~loc txt in
-    let user_provided_to_dyn = Attr.To_dyn.from_label_declaration pld in
-    let expr =
-      match user_provided_to_dyn with
-      | None -> core_type_to_dyn ~loc ~core_type:pld.pld_type (Some field_var)
-      | Some expr -> Ast_builder.Default.pexp_apply ~loc expr [ Nolabel, field_var ]
-    in
-    Ast_builder.Default.pexp_tuple ~loc [ string_lit; expr ]
+    match Attr.Ignore.label_declaration pld with
+    | Ok true -> None
+    | Ok false ->
+      let string_lit = Ast_builder.Default.estring ~loc txt in
+      let field_var = Ast_builder.Default.evar ~loc txt in
+      let user_provided_to_dyn = Attr.To_dyn.from_label_declaration pld in
+      let expr =
+        match user_provided_to_dyn with
+        | None -> core_type_to_dyn ~loc ~core_type:pld.pld_type (Some field_var)
+        | Some expr -> Ast_builder.Default.pexp_apply ~loc expr [ Nolabel, field_var ]
+      in
+      Some (Ast_builder.Default.pexp_tuple ~loc [ string_lit; expr ])
+    | Error (extension, loc) -> Some (Ast_builder.Default.pexp_extension ~loc extension)
   ;;
 
   let record_to_dyn ~loc destructed_record =
-    let fields = List.map (record_field_to_dyn ~loc) destructed_record in
+    let fields = List.filter_map (record_field_to_dyn ~loc) destructed_record in
     [%expr Dyn.record [%e Ast_builder.Default.elist ~loc fields]]
   ;;
 
@@ -214,11 +252,7 @@ module Impl = struct
         let pc_rhs = variant_no_arg ~loc ~variant_name:txt in
         pc_lhs, pc_rhs
       | None, Pcstr_tuple [ core_type ] ->
-        let arg_name = String.uncapitalize_ascii txt in
-        let pat = Ast_builder.Default.pvar ~loc arg_name in
-        let pc_lhs = Ast_builder.Default.ppat_construct ~loc longident_loc (Some pat) in
-        let pc_rhs = variant_one_arg ~loc ~variant_name:txt ~arg_name core_type in
-        pc_lhs, pc_rhs
+        variant_one_arg_case ~loc ~kind:`Regular ~variant_name:txt core_type
       | None, Pcstr_tuple core_types ->
         let destructed = destruct_tuple core_types in
         let pat = tuple_pattern ~loc destructed in
