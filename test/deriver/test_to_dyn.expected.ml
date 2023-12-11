@@ -147,6 +147,12 @@ module Base_types =
     type 'a t11 = 'a option[@@deriving dyn]
     include struct let t11_to_dyn a_to_dyn t11 = Dyn.option a_to_dyn t11 end
     [@@ocaml.doc "@inline"][@@merlin.hide ]
+    type ('a, 'b) t12 = ('a, 'b) result[@@deriving dyn]
+    include
+      struct
+        let t12_to_dyn a_to_dyn b_to_dyn t12 =
+          Dyn.result a_to_dyn b_to_dyn t12
+      end[@@ocaml.doc "@inline"][@@merlin.hide ]
   end
 module To_dyn_attr =
   struct

@@ -19,6 +19,7 @@ module Impl = struct
     | Lident ("bool" as s)
     | Lident ("list" as s)
     | Lident ("array" as s)
+    | Lident ("result" as s)
     | Lident ("option" as s) ->
       Ast_builder.Default.pexp_ident ~loc { txt = Ldot (Lident "Dyn", s); loc }
     | Lident s -> Ast_builder.Default.evar ~loc (to_dyn_name s)

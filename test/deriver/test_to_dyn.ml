@@ -73,6 +73,7 @@ module Base_types = struct
   type 'a t9 = 'a list [@@deriving dyn]
   type 'a t10 = 'a array [@@deriving dyn]
   type 'a t11 = 'a option [@@deriving dyn]
+  type ('a, 'b) t12 = ('a, 'b) result [@@deriving dyn]
 end
 
 module To_dyn_attr = struct
