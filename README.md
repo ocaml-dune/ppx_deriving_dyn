@@ -52,9 +52,8 @@ val to_dyn : t Dyn.builder
     + `list`
     + `array`
     + `option`
-- It uses `Dyn.pair` and `Dyn.triple` for tuples of the corresponding size
-- Larger tuple types are converted using an inline
-   `(fun (x0, x1, x2, x3) -> Dyn.tuple [...])`
+- Tuple types are converted using an inline
+   `(fun (x0, x1, x2, x3) -> Dyn.Tuple [...])`
 - It uses `Dyn.record` for record types
 - It uses `Dyn.variant` for variant and polymorphic variant types. Inline record
   arguments are converted using `Dyn.record` as well.
@@ -102,3 +101,89 @@ type t =
 The attribute can be attached to a core type or record field and accepts
 function identifier, partial function applications and anonymous functions as
 payload.
+
+#### `[@ignore]`
+
+It can be used as `[@ignore]`, `[@to_dyn.ignore]` or
+`[@ppx_deriving_dyn.to_dyn.ignore]` and allows you to exclude part of a tuple,
+record or variant arguments from the output of derived `to_dyn` function.
+
+For example, with the following type definition:
+```ocaml
+type t = int * (string[@ignore]) * bool
+[@@deriving dyn]
+```
+
+The generated dyn converter will ignore the string element of the tuple and
+return a `Dyn.t` value describing an `int * bool` pair. To clarify this a bit,
+the generated code will look roughly like this:
+```ocaml
+let to_dyn (x0, _, x2) = Dyn.Tuple [Dyn.int x0; Dyn.bool x2]
+```
+
+It can also be used to similarly ignore fields of a record:
+```ocaml
+type t =
+  { field_a : int
+  ; field_b : string [@ignore]
+  ; field_c : bool 
+  }
+[@@deriving dyn]
+```
+
+which will produce the following dyn converter:
+```ocaml
+let to_dyn {field_a; field_b = _; field_c} =
+  Dyn.record
+    [("field_a", (Dyn.int field_a)); ("field_c", (Dyn.bool field_c))]
+```
+
+Finally, you can use it on sum type constructor or polymorphic variant's
+arguments:
+```ocaml
+type t =
+  | A of int * (string [@ignore])
+[@@deriving dyn]
+```
+
+which will produce the following dyn converter:
+```ocaml
+let to_dyn = function
+  | A (x0, _) -> Dyn.variant "A" [Dyn.int x0]
+```
+
+Note that you cannot ignore all elements of a tuple or all fields of a record
+but you can ignore all arguments of a constructor, in which case the `to_dyn`
+function will treat it as if it had no argument, e.g.:
+```ocaml
+type t =
+  | A of (int[@ignore])
+[@@deriving dyn]
+```
+
+will derive:
+```ocaml
+let to_dyn = function
+  | A _ -> Dyn.variant "A" []
+```
+
+It is also worth noting that if you ignore all elements of a tuple but one,
+the dyn converter will treat it as it was just that type and not as a tuple
+anymore, e.g.:
+```ocaml
+type t = int * (string [@ignore])
+[@@deriving dyn]
+```
+
+will derive:
+```ocaml
+let to_dyn (x0, _) = Dyn.int x0
+```
+
+This attribute can be used only in very specific places so it's easy to misuse
+it if you forget to add the right brackets. If you're having trouble with it, we
+recommend you add `-check` to your dune file's `(pps ...)` field. This will
+enable some ppxlib driver's check including one reporting unused attributes.
+It should help you debug issues with `[@ignore]` as a misplaced one is likely
+not to be consumed by `ppx_deriving_dyn` and therefore reported as such by the
+driver when building your project.
