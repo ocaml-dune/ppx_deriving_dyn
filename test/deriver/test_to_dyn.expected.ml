@@ -66,6 +66,17 @@ include
        | `C (x0, x1) -> Dyn.variant "C" [Dyn.int x0; Dyn.string x1])
         polymorphic_variant
   end[@@ocaml.doc "@inline"][@@merlin.hide ]
+type recursive =
+  | Leaf 
+  | Node of recursive * recursive [@@deriving dyn][@@ocaml.warning "-37"]
+include
+  struct
+    let rec recursive_to_dyn =
+      function
+      | Leaf -> Dyn.variant "Leaf" []
+      | Node (x0, x1) ->
+          Dyn.variant "Node" [recursive_to_dyn x0; recursive_to_dyn x1]
+  end[@@ocaml.doc "@inline"][@@merlin.hide ]
 type mrec_1 =
   | A of int 
   | B of mrec_2 

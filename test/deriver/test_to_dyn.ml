@@ -37,6 +37,11 @@ type polymorphic_variant =
   ]
 [@@deriving dyn]
 
+type recursive =
+  | Leaf
+  | Node of recursive * recursive
+[@@deriving dyn] [@@ocaml.warning "-37"]
+
 type mrec_1 =
   | A of int
   | B of mrec_2

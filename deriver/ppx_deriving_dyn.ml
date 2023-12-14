@@ -327,11 +327,9 @@ module Impl = struct
 
   let generate ~ctxt (rec_flag, type_declarations) =
     let loc = Expansion_context.Deriver.derived_item_loc ctxt in
+    let rec_flag = really_recursive rec_flag type_declarations in
     match type_declarations with
     | [] -> assert false
-    | [ type_declaration ] ->
-      let value_binding = value_binding ~loc type_declaration in
-      [ Ast_builder.Default.pstr_value ~loc Nonrecursive [ value_binding ] ]
     | type_decls ->
       let value_bindings = List.map (value_binding ~loc) type_decls in
       [ Ast_builder.Default.pstr_value ~loc rec_flag value_bindings ]
