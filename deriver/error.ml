@@ -4,10 +4,6 @@ let error_extensionf ~loc fmt =
   Location.error_extensionf ~loc ("ppx_deriving_dyn: " ^^ fmt)
 ;;
 
-let unsupported_mutually_rec_type_decl ~loc =
-  error_extensionf ~loc "Mutually recursive type declarations are not supported."
-;;
-
 let unsupported_type_param ~loc = error_extensionf ~loc "unsupported type parameter"
 let unsupported_longident ~loc = error_extensionf ~loc "unsupported longident"
 let unsupported_type ~loc = error_extensionf ~loc "cannot derive to_dyn for this type"

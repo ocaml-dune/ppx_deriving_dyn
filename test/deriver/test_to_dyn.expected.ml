@@ -66,6 +66,36 @@ include
        | `C (x0, x1) -> Dyn.variant "C" [Dyn.int x0; Dyn.string x1])
         polymorphic_variant
   end[@@ocaml.doc "@inline"][@@merlin.hide ]
+type mrec_1 =
+  | A of int 
+  | B of mrec_2 
+  | C of mrec_3 [@@ocaml.warning "-37"]
+and mrec_2 =
+  | D of mrec_1 
+  | E of string 
+  | F of mrec_3 [@@ocaml.warning "-37"]
+and mrec_3 =
+  | G of mrec_1 
+  | H of mrec_2 
+  | I of bool [@@deriving dyn][@@ocaml.warning "-37"]
+include
+  struct
+    let rec mrec_1_to_dyn =
+      function
+      | A a -> Dyn.variant "A" [Dyn.int a]
+      | B b -> Dyn.variant "B" [mrec_2_to_dyn b]
+      | C c -> Dyn.variant "C" [mrec_3_to_dyn c]
+    and mrec_2_to_dyn =
+      function
+      | D d -> Dyn.variant "D" [mrec_1_to_dyn d]
+      | E e -> Dyn.variant "E" [Dyn.string e]
+      | F f -> Dyn.variant "F" [mrec_3_to_dyn f]
+    and mrec_3_to_dyn =
+      function
+      | G g -> Dyn.variant "G" [mrec_1_to_dyn g]
+      | H h -> Dyn.variant "H" [mrec_2_to_dyn h]
+      | I i -> Dyn.variant "I" [Dyn.bool i]
+  end[@@ocaml.doc "@inline"][@@merlin.hide ]
 module Base_types =
   struct
     type t = int[@@deriving dyn]

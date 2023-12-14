@@ -37,6 +37,24 @@ type polymorphic_variant =
   ]
 [@@deriving dyn]
 
+type mrec_1 =
+  | A of int
+  | B of mrec_2
+  | C of mrec_3
+[@@ocaml.warning "-37"]
+
+and mrec_2 =
+  | D of mrec_1
+  | E of string
+  | F of mrec_3
+[@@ocaml.warning "-37"]
+
+and mrec_3 =
+  | G of mrec_1
+  | H of mrec_2
+  | I of bool
+[@@deriving dyn] [@@ocaml.warning "-37"]
+
 module Base_types = struct
   type t = int [@@deriving dyn]
   type t1 = unit [@@deriving dyn]

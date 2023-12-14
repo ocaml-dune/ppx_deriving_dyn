@@ -278,7 +278,7 @@ module Impl = struct
       Ast_builder.Default.pexp_extension ~loc (Error.unsupported_type_param ~loc)
   ;;
 
-  let to_dyn_fun ~loc ~rec_flag:_ ~type_declaration =
+  let to_dyn_fun ~loc ~type_declaration =
     match type_declaration with
     | { ptype_kind = Ptype_abstract; ptype_manifest = Some core_type; ptype_params; _ } ->
       let main_arg_name = type_declaration.ptype_name.txt in
@@ -318,22 +318,23 @@ module Impl = struct
         (Error.unsupported_type ~loc:ptype_loc)
   ;;
 
+  let value_binding ~loc type_declaration =
+    let fun_name = to_dyn_name type_declaration.ptype_name.txt in
+    let pat = Ast_builder.Default.(ppat_var ~loc { txt = fun_name; loc }) in
+    let expr = to_dyn_fun ~loc ~type_declaration in
+    Ast_builder.Default.value_binding ~loc ~pat ~expr
+  ;;
+
   let generate ~ctxt (rec_flag, type_declarations) =
     let loc = Expansion_context.Deriver.derived_item_loc ctxt in
     match type_declarations with
     | [] -> assert false
-    | _ :: _ :: _ ->
-      [ Ast_builder.Default.pstr_extension
-          ~loc
-          (Error.unsupported_mutually_rec_type_decl ~loc)
-          []
-      ]
     | [ type_declaration ] ->
-      let fun_name = to_dyn_name type_declaration.ptype_name.txt in
-      let pat = Ast_builder.Default.(ppat_var ~loc { txt = fun_name; loc }) in
-      let expr = to_dyn_fun ~loc ~rec_flag ~type_declaration in
-      let value_binding = Ast_builder.Default.value_binding ~loc ~pat ~expr in
+      let value_binding = value_binding ~loc type_declaration in
       [ Ast_builder.Default.pstr_value ~loc Nonrecursive [ value_binding ] ]
+    | type_decls ->
+      let value_bindings = List.map (value_binding ~loc) type_decls in
+      [ Ast_builder.Default.pstr_value ~loc rec_flag value_bindings ]
   ;;
 
   let generator = Deriving.Generator.V2.make_noarg generate
@@ -372,22 +373,19 @@ module Intf = struct
     with_type_param_args ~loc ~type_params type_
   ;;
 
+  let to_dyn_value ~loc type_declaration =
+    let fun_name = to_dyn_name type_declaration.ptype_name.txt in
+    let name = { txt = fun_name; loc } in
+    let type_ = to_dyn_type ~loc type_declaration in
+    let descr = Ast_builder.Default.value_description ~loc ~name ~type_ ~prim:[] in
+    Ast_builder.Default.psig_value ~loc descr
+  ;;
+
   let generate ~ctxt (_rec_flag, type_declarations) =
     let loc = Expansion_context.Deriver.derived_item_loc ctxt in
     match type_declarations with
     | [] -> assert false
-    | _ :: _ :: _ ->
-      [ Ast_builder.Default.psig_extension
-          ~loc
-          (Error.unsupported_mutually_rec_type_decl ~loc)
-          []
-      ]
-    | [ type_declaration ] ->
-      let fun_name = to_dyn_name type_declaration.ptype_name.txt in
-      let name = { txt = fun_name; loc } in
-      let type_ = to_dyn_type ~loc type_declaration in
-      let descr = Ast_builder.Default.value_description ~loc ~name ~type_ ~prim:[] in
-      [ Ast_builder.Default.psig_value ~loc descr ]
+    | type_decls -> List.map (to_dyn_value ~loc) type_decls
   ;;
 
   let generator = Deriving.Generator.V2.make_noarg generate
