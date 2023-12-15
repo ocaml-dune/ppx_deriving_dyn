@@ -21,6 +21,15 @@ type long_tuple
 val long_tuple_to_dyn : long_tuple Dyn.builder
 type polymorphic_variant
 val polymorphic_variant_to_dyn : polymorphic_variant Dyn.builder
+type mrec_1
+and mrec_2
+and mrec_3[@@deriving dyn]
+include
+  sig
+    val mrec_1_to_dyn : mrec_1 Dyn.builder
+    val mrec_2_to_dyn : mrec_2 Dyn.builder
+    val mrec_3_to_dyn : mrec_3 Dyn.builder
+  end[@@ocaml.doc "@inline"][@@merlin.hide ]
 module Base_types :
 sig
   type t[@@deriving dyn]

@@ -23,6 +23,10 @@ type polymorphic_variant
 
 val polymorphic_variant_to_dyn : polymorphic_variant Dyn.builder
 
+type mrec_1
+and mrec_2
+and mrec_3 [@@deriving dyn]
+
 module Base_types : sig
   type t [@@deriving dyn]
   type t1
